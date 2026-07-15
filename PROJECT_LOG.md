@@ -6,20 +6,15 @@
 
 ### Goal
 
-Build the research environment and initialize the project.
+Set up the local development environment.
 
 ### Completed
 
-- Created GitHub repository
-- Planned project structure
-- Started configuring macOS development environment
+- Installed VS Code
+- Learned basic Linux commands (`mkdir`, `cd`, `pwd`, `ls`)
+- Cloned the GitHub repository
+- Opened the project in VS Code
 
-### Problems
+### Reflection
 
-- Git requires Xcode Command Line Tools.
-
-### Next Step
-
-- Finish installing Git
-- Install VS Code
-- Clone repository locally
+Today I finished building my local research environment. I now understand how Git, GitHub, VS Code, and the terminal work together in a computational materials project.
