@@ -1,0 +1,5 @@
+SYSTEM = beta-Ga2O3 oxygen vacancy
+
+    IBRION = 2
+    EDIFFG = -0.02
+    
