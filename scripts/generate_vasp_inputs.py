@@ -1,6 +1,6 @@
 from pathlib import Path
 from pymatgen.core import Structure
-from pymatgen.io.vasp import Poscar
+from pymatgen.io.vasp import Poscar, Kpoints
 
 project_root = Path(__file__).resolve().parent.parent
 structures_dir = project_root /"structures"
@@ -21,6 +21,10 @@ def write_incar(calculation_dir):
     incar_file = calculation_dir / "INCAR"
     incar_file.write_text(incar_content)
 
+def write_kpoints(calculation_dir):
+    kpoints = Kpoints.gamma_automatic((4, 4, 4))
+    kpoints.write_file(calculation_dir / "KPOINTS")
+
 vacancy_files = structures_dir.glob("*vacancy*.cif")
 for vacancy_file in vacancy_files:
     structure = Structure.from_file(vacancy_file)
@@ -32,6 +36,6 @@ for vacancy_file in vacancy_files:
 
     write_poscar(structure, calculation_dir)    
     write_incar(calculation_dir)
-    
+    write_kpoints(calculation_dir)
 
     
