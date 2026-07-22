@@ -1,0 +1,31 @@
+SYSTEM = beta-Ga2O3 vacancy_O3 static
+
+# Electronic calculation
+PREC    = Accurate
+ENCUT   = 520
+EDIFF   = 1E-7
+ALGO    = Normal
+NELM    = 150
+NELMIN  = 6
+
+# Static calculation: atoms and lattice do not move
+IBRION  = -1
+NSW     = 0
+
+# Occupation settings
+ISMEAR  = 0
+SIGMA   = 0.05
+
+# Spin and symmetry
+ISPIN   = 2
+ISYM    = 0
+
+# Accuracy settings
+LREAL   = .FALSE.
+LASPH   = .TRUE.
+ADDGRID = .TRUE.
+LMAXMIX = 4
+
+# Output settings
+LWAVE   = .FALSE.
+LCHARG  = .TRUE.

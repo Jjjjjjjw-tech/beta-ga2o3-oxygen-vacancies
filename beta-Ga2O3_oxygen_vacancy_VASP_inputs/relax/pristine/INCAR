@@ -1,0 +1,34 @@
+SYSTEM = beta-Ga2O3 pristine relaxation
+
+# Electronic calculation
+PREC    = Accurate
+ENCUT   = 520
+EDIFF   = 1E-6
+ALGO    = Normal
+NELM    = 120
+NELMIN  = 6
+
+# Ionic relaxation
+IBRION  = 2
+NSW     = 200
+ISIF    = 3
+EDIFFG  = -0.02
+POTIM   = 0.5
+
+# Occupation settings
+ISMEAR  = 0
+SIGMA   = 0.05
+
+# Spin and symmetry
+ISPIN   = 2
+ISYM    = 0
+
+# Accuracy settings
+LREAL   = .FALSE.
+LASPH   = .TRUE.
+ADDGRID = .TRUE.
+LMAXMIX = 4
+
+# Output settings
+LWAVE   = .FALSE.
+LCHARG  = .FALSE.
