@@ -1,1 +1,24 @@
 .DS_Store
+# Raw returned calculation archives
+*.tar
+*.tar.gz
+
+# Large VASP output files
+WAVECAR
+CHGCAR
+CHG
+DOSCAR
+EIGENVAL
+IBZKPT
+PCDAT
+REPORT
+XDATCAR
+vasprun.xml
+OUTCAR
+OSZICAR
+
+# Raw calculation results
+beta-Ga2O3_oxygen_vacancy_VASP_inputs/received_results/
+
+# VASP licensed potential files
+POTCAR
