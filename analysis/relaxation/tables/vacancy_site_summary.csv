@@ -1,0 +1,4 @@
+structure,vacancy_reference_atom_number,vacancy_element,vacancy_frac_x,vacancy_frac_y,vacancy_frac_z,atoms_within_cutoff,ga_atoms_reported,global_drift_A
+vacancy_O1,33,O,0.24823457,0.12833205,0.49646912,23,6,1.6916578088645812e-15
+vacancy_O2,49,O,0.08668553,0.28161508,0.17337106,19,6,1.7524824155318273e-15
+vacancy_O3,65,O,0.41774776,0.44542296,0.33549502,22,6,2.0234421791175865e-15
