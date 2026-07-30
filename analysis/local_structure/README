@@ -1,0 +1,209 @@
+# Local Structure Analysis
+
+This directory contains the local structural analysis of oxygen vacancies in β-Ga₂O₃ after structural relaxation.
+
+The purpose of this analysis is to quantify how the local Ga–O coordination environment changes after introducing an oxygen vacancy.
+
+---
+
+## Analysis workflow
+
+For each oxygen vacancy:
+
+1. Identify the Ga atoms belonging to the first coordination shell of the vacancy.
+2. Automatically determine the first-shell Ga atoms using the vacancy–Ga distance distribution.
+3. Compare the relaxed pristine structure with the relaxed vacancy structure.
+4. Calculate
+   - coordination number changes,
+   - Ga–O bond-length changes,
+   - preserved bonds,
+   - broken bonds,
+   - newly formed bonds.
+
+Only relaxed structures (CONTCAR files) are used in this analysis.
+
+---
+
+## First-shell Ga selection
+
+The first-shell Ga atoms are **not manually specified**.
+
+Instead, the algorithm
+
+1. calculates the distance from the vacancy to every Ga atom,
+2. sorts the distances,
+3. detects the first significant distance gap (default: 0.30 Å),
+4. defines all Ga atoms before this gap as the first coordination shell.
+
+This allows different vacancy sites to have different numbers of neighboring Ga atoms.
+
+Example:
+
+### Vacancy O1
+
+```
+1.84
+1.84
+1.94
+----------------
+2.81
+```
+
+First-shell Ga atoms = 3
+
+### Vacancy O2
+
+```
+1.87
+2.01
+2.08
+2.08
+----------------
+2.62
+```
+
+First-shell Ga atoms = 4
+
+---
+
+## Atom correspondence
+
+The comparison between pristine and vacancy structures uses the atom mapping generated during the relaxation analysis.
+
+The mapping stored in
+
+```
+analysis/relaxation/tables/local_relaxation_details.csv
+```
+
+provides
+
+```
+defect_atom_number
+reference_atom_number
+```
+
+which allows each atom in the vacancy structure to be associated with the corresponding atom in the relaxed pristine structure.
+
+No additional structure matching is performed in this module.
+
+---
+
+## Bond definition
+
+A Ga–O bond is defined using a distance cutoff
+
+```
+Ga–O ≤ 2.50 Å
+```
+
+For each first-shell Ga atom, all neighboring oxygen atoms within this cutoff are identified.
+
+The coordination number is therefore
+
+```
+number of oxygen atoms
+within 2.50 Å
+```
+
+---
+
+## Bond comparison
+
+Each Ga–O bond is classified into one of three categories.
+
+### preserved
+
+The bond exists in both structures.
+
+```
+Pristine:
+Ga29 — O36
+
+↓
+
+Vacancy:
+Ga29 — O36
+```
+
+The bond-length change is
+
+```
+Δd = d(vacancy) − d(pristine)
+```
+
+---
+
+### lost
+
+The bond exists in the pristine structure but disappears after vacancy formation.
+
+Typically this corresponds to the removed oxygen atom.
+
+---
+
+### formed
+
+A new oxygen atom enters the coordination shell after structural relaxation.
+
+---
+
+## Output files
+
+### first_shell_ga.csv
+
+Summary of the detected first-shell Ga atoms.
+
+Contains
+
+- vacancy name
+- defect Ga number
+- reference Ga number
+- distance to vacancy
+- shell boundary
+- shell size
+
+---
+
+### bond_change_summary.csv
+
+Combined bond analysis for all vacancy structures.
+
+---
+
+### vacancy_O1/
+
+Contains
+
+```
+ga_o_bond_changes.csv
+```
+
+Detailed bond comparison for Vacancy O1.
+
+Equivalent files are also generated for
+
+- vacancy_O2
+- vacancy_O3
+
+---
+
+## Scientific purpose
+
+This analysis quantifies
+
+- coordination-number reduction,
+- bond breaking,
+- bond contraction,
+- bond elongation,
+
+around oxygen vacancies.
+
+The results provide the structural basis for subsequent analyses such as
+
+- defect stability,
+- electronic structure,
+- charge distribution,
+- Bader charge analysis,
+- density of states (DOS),
+- crystal orbital analysis.
