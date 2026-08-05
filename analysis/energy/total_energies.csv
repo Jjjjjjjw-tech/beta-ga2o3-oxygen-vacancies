@@ -1,0 +1,5 @@
+structure,vasprun_path,total_energy_eV,electronic_converged,ionic_converged,overall_converged
+pristine,/Users/lijingwen/Research/eta-Ga2O3-vacancy-ml/beta-Ga2O3_oxygen_vacancy_VASP_inputs/received_results/2026-07-25_results/pristine/scf/vasprun.xml,-492.59055189,True,True,True
+vacancy_O1,/Users/lijingwen/Research/eta-Ga2O3-vacancy-ml/beta-Ga2O3_oxygen_vacancy_VASP_inputs/received_results/2026-07-25_results/vacancy_O1/scf/vasprun.xml,-483.55237675,True,True,True
+vacancy_O2,/Users/lijingwen/Research/eta-Ga2O3-vacancy-ml/beta-Ga2O3_oxygen_vacancy_VASP_inputs/received_results/2026-07-25_results/vacancy_O2/scf/vasprun.xml,-483.01794257,True,True,True
+vacancy_O3,/Users/lijingwen/Research/eta-Ga2O3-vacancy-ml/beta-Ga2O3_oxygen_vacancy_VASP_inputs/received_results/2026-07-25_results/vacancy_O3/scf/vasprun.xml,-483.26328457,True,True,True

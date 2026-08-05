@@ -101,7 +101,7 @@ Further analyses are required:
 
 ✔ Local relaxation
 
-⬜ Bond-length analysis
+✔  Bond-length analysis
 
 ⬜ Coordination analysis
 

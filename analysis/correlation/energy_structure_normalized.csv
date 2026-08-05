@@ -1,0 +1,4 @@
+structure,vacancy_label,relative_energy_eV,relative_energy_eV_normalized,maximum_ga_displacement_A,maximum_ga_displacement_A_normalized,mean_absolute_bond_distortion_A,mean_absolute_bond_distortion_A_normalized,maximum_local_angle_distortion_deg,maximum_local_angle_distortion_deg_normalized
+vacancy_O1,O1,0.0,0.0,0.22735688255237016,0.0,0.051691127480148626,1.0,7.126614020169683,0.0
+vacancy_O2,O2,0.5344341800000052,1.0,0.3612465414487466,0.9689025477055009,0.037189452815217856,0.0,11.189051155491867,0.9826801202432484
+vacancy_O3,O3,0.28909218000001147,0.5409313079489202,0.36554380260273667,1.0,0.04139186797986725,0.28978826664840607,11.260652199670645,1.0
