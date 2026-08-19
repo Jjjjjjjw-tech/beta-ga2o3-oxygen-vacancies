@@ -4,23 +4,24 @@ Analyze site- and orbital-projected DOS of first-shell Ga atoms.
 
 Inputs
 ------
-analysis/electronic_structure/dos/pdos_targets.csv
+analysis/electronic_structure/pdos/pdos_targets.csv
 
 beta-Ga2O3_oxygen_vacancy_VASP_inputs/
     received_results/
-        2026-07-25_results/
-            vacancy_O1/scf/vasprun.xml
-            vacancy_O2/scf/vasprun.xml
-            vacancy_O3/scf/vasprun.xml
+        2026-08-17_results/
+            1/scf/vasprun.xml
+            2/scf/vasprun.xml
+            3/scf/vasprun.xml
+            pristine/scf/vasprun.xml
 
 Outputs
 -------
-analysis/electronic_structure/dos/ga_pdos/
+analysis/electronic_structure/pdos/ga/
     vacancy_O1_ga_pdos.csv
     vacancy_O2_ga_pdos.csv
     vacancy_O3_ga_pdos.csv
 
-analysis/electronic_structure/dos/figures/
+analysis/electronic_structure/figures/
     vacancy_O1_ga_pdos.png
     vacancy_O2_ga_pdos.png
     vacancy_O3_ga_pdos.png
@@ -62,13 +63,20 @@ from pymatgen.io.vasp.outputs import Vasprun
 # Configuration
 # ============================================================
 
-RESULT_DATE = "2026-07-25_results"
+RESULT_DATE = "2026-08-17_results"
 
 VACANCY_STRUCTURES = (
     "vacancy_O1",
     "vacancy_O2",
     "vacancy_O3",
 )
+
+# Physical folder names in the newly imported VASP dataset
+VACANCY_FOLDER_MAP = {
+    "vacancy_O1": "1",
+    "vacancy_O2": "2",
+    "vacancy_O3": "3",
+}
 
 VACANCY_LABELS = {
     "vacancy_O1": "O1 vacancy",
@@ -93,41 +101,18 @@ ORBITAL_LABELS = {
     OrbitalType.d: "d",
 }
 
-# Energy window relative to each structure's Fermi level.
+# Energy window relative to each structure's own Fermi level
 ENERGY_MIN_EV = -6.0
 ENERGY_MAX_EV = 6.0
 
-# If True, divide the average site PDOS by nothing further.
-# The quantity is already the average PDOS per selected Ga atom.
 NORMALIZE_BY_NUMBER_OF_SITES = True
 
 
 # ============================================================
-# Locate project root
+# Project paths
 # ============================================================
 
-def find_project_root() -> Path:
-    """Find the project root from this script's location."""
-
-    script_path = Path(__file__).resolve()
-
-    for parent in script_path.parents:
-        if (
-            (parent / "analysis").is_dir()
-            and (
-                parent
-                / "beta-Ga2O3_oxygen_vacancy_VASP_inputs"
-            ).is_dir()
-        ):
-            return parent
-
-    raise RuntimeError(
-        "Cannot identify the project root.\n"
-        f"Script location:\n{script_path}"
-    )
-
-
-PROJECT_ROOT = find_project_root()
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 RESULTS_ROOT = (
     PROJECT_ROOT
@@ -136,38 +121,62 @@ RESULTS_ROOT = (
     / RESULT_DATE
 )
 
-DOS_ROOT = (
+ELECTRONIC_STRUCTURE_DIR = (
     PROJECT_ROOT
     / "analysis"
     / "electronic_structure"
+)
+
+# ------------------------------------------------------------
+# DOS output directory
+# ------------------------------------------------------------
+
+DOS_ROOT = (
+    ELECTRONIC_STRUCTURE_DIR
     / "dos"
 )
 
+# ------------------------------------------------------------
+# PDOS output directory
+# ------------------------------------------------------------
+
+PDOS_ROOT = (
+    ELECTRONIC_STRUCTURE_DIR
+    / "pdos"
+)
+
 TARGETS_CSV_PATH = (
-    DOS_ROOT
+    PDOS_ROOT
     / "pdos_targets.csv"
 )
 
 PDOS_OUTPUT_DIR = (
-    DOS_ROOT
-    / "ga_pdos"
+    PDOS_ROOT
+    / "ga"
 )
 
+# ------------------------------------------------------------
+# Figure output directory
+# ------------------------------------------------------------
+
 FIGURE_DIR = (
-    DOS_ROOT
+    ELECTRONIC_STRUCTURE_DIR
     / "figures"
 )
+
+# ------------------------------------------------------------
+# VASP vasprun.xml paths
+# ------------------------------------------------------------
 
 VASPRUN_PATHS = {
     structure_name: (
         RESULTS_ROOT
-        / structure_name
+        / VACANCY_FOLDER_MAP[structure_name]
         / "scf"
         / "vasprun.xml"
     )
     for structure_name in VACANCY_STRUCTURES
 }
-
 
 # ============================================================
 # CSV helpers

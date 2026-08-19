@@ -22,3 +22,6 @@ beta-Ga2O3_oxygen_vacancy_VASP_inputs/received_results/
 
 # VASP licensed potential files
 POTCAR
+
+__pycache__/
+*.pyc

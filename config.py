@@ -67,8 +67,11 @@ BAND_STRUCTURE_DIR = (
 # ONLY MODIFY THIS PATH WHEN THE DATA LOCATION CHANGES
 # ------------------------------------------------------------
 
-DATA_ROOT = Path(
-    "/Volumes/Yanchen Li/vasp_results_11.08.2026/data"
+DATA_ROOT = (
+    PROJECT_ROOT
+    / "beta-Ga2O3_oxygen_vacancy_VASP_inputs"
+    / "received_results"
+    / "2026-08-17_results"
 )
 
 # ============================================================

@@ -1,17 +1,36 @@
 #!/usr/bin/env python3
+
 """
 Analyze and compare the total density of states (DOS) of pristine
 and oxygen-vacancy beta-Ga2O3 structures.
 
-Inputs
-------
-beta-Ga2O3_oxygen_vacancy_VASP_inputs/
-    received_results/
-        2026-07-25_results/
-            pristine/scf/vasprun.xml
-            vacancy_O1/scf/vasprun.xml
-            vacancy_O2/scf/vasprun.xml
-            vacancy_O3/scf/vasprun.xml
+This version uses the newly imported external VASP dataset defined
+in the project-level config.py.
+
+Systems
+-------
+- pristine
+- vacancy_O1
+- vacancy_O2
+- vacancy_O3
+
+Energy alignment
+----------------
+For each system, the energy axis is shifted independently so that
+
+    E - E_F = 0 eV
+
+where E_F is the Fermi energy of that calculation.
+
+DOS normalization
+-----------------
+The total DOS is divided by the number of atoms in each structure,
+giving units of
+
+    states / eV / atom
+
+This allows the 80-atom pristine structure and 79-atom vacancy
+structures to be compared directly.
 
 Outputs
 -------
@@ -21,201 +40,170 @@ analysis/electronic_structure/
 analysis/electronic_structure/figures/
     total_dos_comparison.png
     total_dos_near_fermi.png
-
-Notes
------
-1. Each energy axis is shifted independently so that:
-
-       E - E_F = 0 eV
-
-2. DOS values are divided by the number of atoms in each structure.
-   The plotted unit is therefore states / eV / atom.
-
-3. The current calculations use ISPIN = 1, so only one total DOS
-   curve is expected for each structure.
-
-4. Fermi-level alignment is useful for an initial comparison, but
-   the Fermi level of a semiconductor can be somewhat arbitrary
-   inside the band gap. A later analysis may align structures using
-   the valence-band maximum or an electrostatic reference.
 """
 
-from __future__ import annotations
-
-import csv
 from pathlib import Path
+import sys
 
-import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
 
 from pymatgen.electronic_structure.core import Spin
 from pymatgen.io.vasp.outputs import Vasprun
 
 
 # ============================================================
-# Configuration
+# Import project configuration
 # ============================================================
 
-RESULT_DATE = "2026-07-25_results"
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
-STRUCTURE_NAMES = (
-    "pristine",
-    "vacancy_O1",
-    "vacancy_O2",
-    "vacancy_O3",
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(
+        0,
+        str(PROJECT_ROOT),
+    )
+
+
+from config import (
+    PRISTINE_SCF_DIR,
+    VACANCY_O1_SCF_DIR,
+    VACANCY_O2_SCF_DIR,
+    VACANCY_O3_SCF_DIR,
+    ELECTRONIC_STRUCTURE_DIR,
+    ELECTRONIC_STRUCTURE_FIGURE_DIR,
 )
 
-STRUCTURE_LABELS = {
+
+# ============================================================
+# Calculation directories
+# ============================================================
+
+CALCULATIONS = {
+    "pristine": PRISTINE_SCF_DIR,
+    "vacancy_O1": VACANCY_O1_SCF_DIR,
+    "vacancy_O2": VACANCY_O2_SCF_DIR,
+    "vacancy_O3": VACANCY_O3_SCF_DIR,
+}
+
+
+# ============================================================
+# Plot labels
+# ============================================================
+
+PLOT_LABELS = {
     "pristine": "Pristine",
     "vacancy_O1": "O1 vacancy",
     "vacancy_O2": "O2 vacancy",
     "vacancy_O3": "O3 vacancy",
 }
 
-# Energy window for the full comparison figure.
-FULL_ENERGY_MIN_EV = -10.0
-FULL_ENERGY_MAX_EV = 8.0
-
-# Energy window near the Fermi level.
-NEAR_FERMI_MIN_EV = -3.0
-NEAR_FERMI_MAX_EV = 3.0
-
-# Divide total DOS by number of atoms.
-NORMALIZE_PER_ATOM = True
-
 
 # ============================================================
-# File paths
+# Output files
 # ============================================================
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-
-RESULTS_ROOT = (
-    PROJECT_ROOT
-    / "beta-Ga2O3_oxygen_vacancy_VASP_inputs"
-    / "received_results"
-    / RESULT_DATE
-)
-
-OUTPUT_ROOT = (
-    PROJECT_ROOT
-    / "analysis"
-    / "electronic_structure"
-)
-
-FIGURE_DIR = (
-    OUTPUT_ROOT
-    / "figures"
-)
-
-DOS_CSV_OUTPUT_PATH = (
-    OUTPUT_ROOT
+OUTPUT_CSV = (
+    ELECTRONIC_STRUCTURE_DIR
     / "total_dos.csv"
 )
 
-FULL_DOS_FIGURE_PATH = (
-    FIGURE_DIR
+OUTPUT_COMPARISON_FIGURE = (
+    ELECTRONIC_STRUCTURE_FIGURE_DIR
     / "total_dos_comparison.png"
 )
 
-NEAR_FERMI_FIGURE_PATH = (
-    FIGURE_DIR
+OUTPUT_NEAR_FERMI_FIGURE = (
+    ELECTRONIC_STRUCTURE_FIGURE_DIR
     / "total_dos_near_fermi.png"
 )
 
 
-VASPRUN_PATHS = {
-    structure_name: (
-        RESULTS_ROOT
-        / structure_name
-        / "scf"
-        / "vasprun.xml"
-    )
-    for structure_name in STRUCTURE_NAMES
-}
+# ============================================================
+# Ensure output directories exist
+# ============================================================
+
+ELECTRONIC_STRUCTURE_DIR.mkdir(
+    parents=True,
+    exist_ok=True,
+)
+
+ELECTRONIC_STRUCTURE_FIGURE_DIR.mkdir(
+    parents=True,
+    exist_ok=True,
+)
 
 
 # ============================================================
-# General helper functions
+# Helper functions
 # ============================================================
 
-def write_csv(
-    output_path: Path,
-    rows: list[dict[str, object]],
-) -> None:
-    """Write dictionaries to a CSV file."""
+def print_header(title: str) -> None:
+    """Print a formatted terminal header."""
 
-    if not rows:
-        raise ValueError(
-            f"No data rows are available for {output_path.name}."
-        )
-
-    output_path.parent.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
-
-    with output_path.open(
-        "w",
-        newline="",
-        encoding="utf-8",
-    ) as csv_file:
-        writer = csv.DictWriter(
-            csv_file,
-            fieldnames=list(rows[0].keys()),
-        )
-
-        writer.writeheader()
-        writer.writerows(rows)
+    print()
+    print("=" * 78)
+    print(title)
+    print("=" * 78)
 
 
-def sum_spin_densities(
-    densities: dict[Spin, np.ndarray],
-) -> np.ndarray:
+def get_total_density(complete_dos) -> np.ndarray:
     """
-    Sum all available spin-channel densities.
+    Return total DOS summed over all spin channels.
 
-    For ISPIN = 1, pymatgen normally stores only Spin.up.
-    This function also works if spin-polarized calculations
-    are analyzed later.
+    Works for both ISPIN = 1 and ISPIN = 2 calculations.
     """
 
-    if not densities:
-        raise ValueError(
-            "The DOS object does not contain density data."
-        )
-
-    total_density = np.zeros_like(
-        next(iter(densities.values())),
+    total_density = np.zeros(
+        len(complete_dos.energies),
         dtype=float,
     )
 
-    for spin_density in densities.values():
+    for density in complete_dos.densities.values():
         total_density += np.asarray(
-            spin_density,
+            density,
             dtype=float,
         )
 
     return total_density
 
 
-# ============================================================
-# Read DOS data
-# ============================================================
-
-def read_total_dos(
-    structure_name: str,
-    vasprun_path: Path,
-) -> dict[str, object]:
+def read_dos(
+    name: str,
+    scf_dir: Path,
+) -> dict:
     """
-    Read total DOS and convergence information from vasprun.xml.
+    Read total DOS information from vasprun.xml.
+
+    Parameters
+    ----------
+    name
+        Calculation label.
+
+    scf_dir
+        SCF calculation directory.
+
+    Returns
+    -------
+    dict
+        Electronic-structure information.
     """
 
-    if not vasprun_path.is_file():
+    vasprun_path = (
+        scf_dir
+        / "vasprun.xml"
+    )
+
+    if not vasprun_path.exists():
         raise FileNotFoundError(
-            f"{structure_name}: cannot find vasprun.xml:\n"
+            f"{name}: vasprun.xml not found:\n"
             f"{vasprun_path}"
         )
+
+    print(
+        f"Reading {name} ..."
+    )
 
     vasprun = Vasprun(
         vasprun_path,
@@ -224,417 +212,402 @@ def read_total_dos(
         parse_projected_eigen=False,
     )
 
-    # Vasprun.tdos is the total DOS object.
-    total_dos = vasprun.tdos
-
-    if total_dos is None:
-        raise ValueError(
-            f"{structure_name}: no total DOS was found "
-            f"in vasprun.xml:\n{vasprun_path}"
-        )
-
-    energies_absolute = np.asarray(
-        total_dos.energies,
-        dtype=float,
+    complete_dos = (
+        vasprun.complete_dos
     )
-
-    fermi_energy = float(
-        total_dos.efermi
-    )
-
-    energies_relative = (
-        energies_absolute
-        - fermi_energy
-    )
-
-    densities = sum_spin_densities(
-        total_dos.densities
-    )
-
-    final_structure = vasprun.final_structure
-
-    if final_structure is None:
-        raise ValueError(
-            f"{structure_name}: final structure was not found "
-            f"in vasprun.xml."
-        )
 
     number_of_atoms = len(
-        final_structure
+        vasprun.final_structure
     )
 
-    if NORMALIZE_PER_ATOM:
-        densities = (
-            densities
-            / number_of_atoms
+    efermi = float(
+        vasprun.efermi
+    )
+
+    # Shift energy axis so EF = 0 eV
+    energies = (
+        np.asarray(
+            complete_dos.energies,
+            dtype=float,
         )
+        - efermi
+    )
+
+    total_density = (
+        get_total_density(
+            complete_dos
+        )
+    )
+
+    # Normalize by number of atoms
+    dos_per_atom = (
+        total_density
+        / number_of_atoms
+    )
+
+    band_gap = float(
+        complete_dos.get_gap()
+    )
 
     return {
-        "structure": structure_name,
-        "label": STRUCTURE_LABELS[
-            structure_name
-        ],
+        "name": name,
+        "label": PLOT_LABELS[name],
         "number_of_atoms": number_of_atoms,
-        "fermi_energy_eV": fermi_energy,
+        "efermi": efermi,
+        "band_gap": band_gap,
+        "energies": energies,
+        "dos_per_atom": dos_per_atom,
         "electronic_converged":
-            bool(
-                vasprun.converged_electronic
-            ),
+            vasprun.converged_electronic,
         "overall_converged":
-            bool(
-                vasprun.converged
-            ),
-        "energies_absolute_eV":
-            energies_absolute,
-        "energies_relative_eV":
-            energies_relative,
-        "dos":
-            densities,
+            vasprun.converged,
     }
 
-def read_all_dos() -> list[dict[str, object]]:
-    """Read total DOS for all configured structures."""
 
-    results: list[
-        dict[str, object]
-    ] = []
+# ============================================================
+# Read all calculations
+# ============================================================
 
-    print("=" * 78)
-    print("Total DOS data")
-    print("=" * 78)
+def read_all_dos() -> dict:
+    """Read DOS data for all four structures."""
 
-    for structure_name in STRUCTURE_NAMES:
-        dos_result = read_total_dos(
-            structure_name=structure_name,
-            vasprun_path=
-                VASPRUN_PATHS[
-                    structure_name
-                ],
-        )
+    results = {}
 
-        results.append(
-            dos_result
-        )
+    for name, scf_dir in CALCULATIONS.items():
 
-        print()
-        print(structure_name)
-        print(
-            "  Number of atoms       : "
-            f"{dos_result['number_of_atoms']}"
-        )
-        print(
-            "  Fermi energy          : "
-            f"{dos_result['fermi_energy_eV']:.6f} eV"
-        )
-        print(
-            "  Electronic converged  : "
-            f"{dos_result['electronic_converged']}"
-        )
-        print(
-            "  Overall converged     : "
-            f"{dos_result['overall_converged']}"
-        )
-        print(
-            "  DOS energy points     : "
-            f"{len(dos_result['energies_relative_eV'])}"
+        results[name] = read_dos(
+            name,
+            scf_dir,
         )
 
     return results
 
 
 # ============================================================
-# Prepare CSV output
+# Save CSV
 # ============================================================
 
-def build_dos_csv_rows(
-    dos_results: list[dict[str, object]],
-) -> list[dict[str, object]]:
+def save_dos_csv(
+    results: dict,
+) -> None:
     """
-    Build long-format DOS rows.
+    Save total DOS data in long-table format.
 
-    Each row corresponds to one energy point of one structure.
+    Each row contains one energy point for one structure.
     """
 
-    rows: list[
-        dict[str, object]
-    ] = []
+    rows = []
 
-    for result in dos_results:
-        structure_name = str(
-            result["structure"]
-        )
+    for name, result in results.items():
 
-        label = str(
-            result["label"]
-        )
-
-        number_of_atoms = int(
-            result["number_of_atoms"]
-        )
-
-        fermi_energy = float(
-            result["fermi_energy_eV"]
-        )
-
-        absolute_energies = np.asarray(
-            result[
-                "energies_absolute_eV"
-            ],
-            dtype=float,
-        )
-
-        relative_energies = np.asarray(
-            result[
-                "energies_relative_eV"
-            ],
-            dtype=float,
-        )
-
-        densities = np.asarray(
-            result["dos"],
-            dtype=float,
-        )
-
-        for (
-            absolute_energy,
-            relative_energy,
-            density,
-        ) in zip(
-            absolute_energies,
-            relative_energies,
-            densities,
+        for energy, density in zip(
+            result["energies"],
+            result["dos_per_atom"],
         ):
+
             rows.append(
                 {
-                    "structure":
-                        structure_name,
-                    "label":
-                        label,
-                    "number_of_atoms":
-                        number_of_atoms,
-                    "fermi_energy_eV":
-                        fermi_energy,
-                    "energy_absolute_eV":
-                        float(
-                            absolute_energy
-                        ),
+                    "structure": name,
+                    "label": result["label"],
                     "energy_minus_fermi_eV":
-                        float(
-                            relative_energy
-                        ),
+                        energy,
                     "dos_states_per_eV_per_atom":
-                        float(
-                            density
-                        ),
+                        density,
+                    "fermi_energy_eV":
+                        result["efermi"],
+                    "dos_band_gap_eV":
+                        result["band_gap"],
+                    "number_of_atoms":
+                        result["number_of_atoms"],
                 }
             )
 
-    return rows
+    dataframe = pd.DataFrame(
+        rows
+    )
 
+    dataframe.to_csv(
+        OUTPUT_CSV,
+        index=False,
+    )
 
 # ============================================================
-# Plotting
+# Plot: full DOS comparison
 # ============================================================
 
 def plot_total_dos(
-    dos_results: list[dict[str, object]],
-    output_path: Path,
-    energy_min_eV: float,
-    energy_max_eV: float,
-    title: str,
+    results: dict,
 ) -> None:
-    """Plot total DOS curves within a selected energy range."""
+    """Plot total DOS over the full energy range."""
 
-    figure, axis = plt.subplots(
-        figsize=(8, 5.5),
+    fig, ax = plt.subplots(
+        figsize=(9, 6)
     )
 
-    maximum_visible_dos = 0.0
+    for result in results.values():
 
-    for result in dos_results:
-        energies = np.asarray(
-            result[
-                "energies_relative_eV"
-            ],
-            dtype=float,
+        ax.plot(
+            result["energies"],
+            result["dos_per_atom"],
+            linewidth=1.8,
+            label=result["label"],
         )
 
-        densities = np.asarray(
-            result["dos"],
-            dtype=float,
-        )
-
-        visible_mask = (
-            (energies >= energy_min_eV)
-            & (energies <= energy_max_eV)
-        )
-
-        if not np.any(
-            visible_mask
-        ):
-            raise ValueError(
-                f"No DOS points for "
-                f"{result['structure']} in the range "
-                f"{energy_min_eV} to {energy_max_eV} eV."
-            )
-
-        axis.plot(
-            energies[
-                visible_mask
-            ],
-            densities[
-                visible_mask
-            ],
-            linewidth=1.7,
-            label=str(
-                result["label"]
-            ),
-        )
-
-        visible_maximum = float(
-            np.max(
-                densities[
-                    visible_mask
-                ]
-            )
-        )
-
-        maximum_visible_dos = max(
-            maximum_visible_dos,
-            visible_maximum,
-        )
-
-    axis.axvline(
+    # Fermi level
+    ax.axvline(
         0.0,
-        linewidth=1.0,
         linestyle="--",
+        linewidth=1.0,
+        alpha=0.6,
         label=r"$E_F$",
     )
 
-    axis.set_xlim(
-        energy_min_eV,
-        energy_max_eV,
+    ax.set_xlim(
+        -10,
+        8,
     )
 
-    axis.set_ylim(
+    # Automatic y-axis scaling
+    max_dos = max(
+        np.max(result["dos_per_atom"])
+        for result in results.values()
+    )
+
+    ax.set_ylim(
         0,
-        maximum_visible_dos * 1.08
-        if maximum_visible_dos > 0
-        else 1,
+        1.15,
     )
 
-    axis.set_xlabel(
+
+    ax.set_xlabel(
         r"Energy, $E-E_F$ (eV)"
     )
 
-    if NORMALIZE_PER_ATOM:
-        axis.set_ylabel(
-            "DOS (states/eV/atom)"
-        )
-    else:
-        axis.set_ylabel(
-            "DOS (states/eV)"
-        )
-
-    axis.set_title(
-        title
+    ax.set_ylabel(
+        "DOS (states/eV/atom)"
     )
 
-    axis.legend(
+    ax.set_title(
+        "Total DOS of pristine and oxygen-vacancy structures"
+    )
+
+    ax.legend(
+        loc="upper right",
+        bbox_to_anchor=(0.98, 0.98),
         frameon=False,
     )
 
-    axis.grid(
-        alpha=0.2,
+    ax.grid(
+        alpha=0.15
     )
 
-    figure.tight_layout()
+    fig.tight_layout()
 
-    output_path.parent.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
-
-    figure.savefig(
-        output_path,
+    fig.savefig(
+        OUTPUT_COMPARISON_FIGURE,
         dpi=300,
         bbox_inches="tight",
     )
 
-    plt.close(
-        figure
+    plt.close(fig)
+
+
+# ============================================================
+# Plot: near-Fermi region
+# ============================================================
+
+def plot_near_fermi(
+    results: dict,
+) -> None:
+    """Plot DOS around the Fermi level."""
+
+    fig, ax = plt.subplots(
+        figsize=(9, 6)
+    )
+
+    max_dos = 0.0
+
+    for result in results.values():
+
+        energies = result["energies"]
+        dos = result["dos_per_atom"]
+
+        mask = (
+            (energies >= -3.0)
+            & (energies <= 3.0)
+        )
+
+        ax.plot(
+            energies[mask],
+            dos[mask],
+            linewidth=1.8,
+            label=result["label"],
+        )
+
+        if np.any(mask):
+            max_dos = max(
+                max_dos,
+                np.max(dos[mask]),
+            )
+
+    ax.axvline(
+        0.0,
+        linestyle="--",
+        linewidth=1.0,
+        alpha=0.6,
+        label=r"$E_F$",
+    )
+
+    ax.set_xlim(
+        -3,
+        3,
+    )
+
+    ax.set_ylim(
+        0,
+        max_dos * 1.10,
+    )
+
+    ax.set_xlabel(
+        r"Energy, $E-E_F$ (eV)"
+    )
+
+    ax.set_ylabel(
+        "DOS (states/eV/atom)"
+    )
+
+    ax.set_title(
+        "Total DOS near the Fermi level"
+    )
+
+    ax.legend(
+        loc="upper right",
+        bbox_to_anchor=(0.98, 0.98),
+        frameon=False,
+    )
+
+    ax.grid(
+        alpha=0.15
+    )
+
+    fig.tight_layout()
+
+    fig.savefig(
+        OUTPUT_NEAR_FERMI_FIGURE,
+        dpi=300,
+        bbox_inches="tight",
+    )
+
+    plt.close(fig)
+
+# ============================================================
+# Print summary
+# ============================================================
+
+def print_summary(
+    results: dict,
+) -> None:
+    """Print calculation and DOS summary."""
+
+    print_header(
+        "Total DOS summary"
+    )
+
+    for name, result in results.items():
+
+        print(
+            f"{name}"
+        )
+
+        print(
+            f"  Number of atoms       : "
+            f"{result['number_of_atoms']}"
+        )
+
+        print(
+            f"  Fermi energy          : "
+            f"{result['efermi']:.6f} eV"
+        )
+
+        print(
+            f"  DOS band gap          : "
+            f"{result['band_gap']:.6f} eV"
+        )
+
+        print(
+            f"  Electronic converged  : "
+            f"{result['electronic_converged']}"
+        )
+
+        print(
+            f"  Overall converged     : "
+            f"{result['overall_converged']}"
+        )
+
+        print()
+
+    print_header(
+        "Output files"
+    )
+
+    print(
+        OUTPUT_CSV
+    )
+
+    print(
+        OUTPUT_COMPARISON_FIGURE
+    )
+
+    print(
+        OUTPUT_NEAR_FERMI_FIGURE
     )
 
 
 # ============================================================
-# Main program
+# Main
 # ============================================================
 
 def main() -> None:
-    """Read, export, and plot the total DOS."""
 
-    dos_results = read_all_dos()
-
-    dos_rows = build_dos_csv_rows(
-        dos_results
+    print_header(
+        "Total DOS analysis"
     )
 
-    write_csv(
-        output_path=
-            DOS_CSV_OUTPUT_PATH,
-        rows=dos_rows,
+    print(
+        "Dataset:"
+    )
+
+    for name, folder in CALCULATIONS.items():
+
+        print(
+            f"  {name:12s}: "
+            f"{folder}"
+        )
+
+    print()
+
+    results = read_all_dos()
+
+    save_dos_csv(
+        results
     )
 
     plot_total_dos(
-        dos_results=dos_results,
-        output_path=
-            FULL_DOS_FIGURE_PATH,
-        energy_min_eV=
-            FULL_ENERGY_MIN_EV,
-        energy_max_eV=
-            FULL_ENERGY_MAX_EV,
-        title=(
-            "Total DOS of pristine and "
-            "oxygen-vacancy structures"
-        ),
+        results
     )
 
-    plot_total_dos(
-        dos_results=dos_results,
-        output_path=
-            NEAR_FERMI_FIGURE_PATH,
-        energy_min_eV=
-            NEAR_FERMI_MIN_EV,
-        energy_max_eV=
-            NEAR_FERMI_MAX_EV,
-        title=(
-            "Total DOS near the Fermi level"
-        ),
+    plot_near_fermi(
+        results
     )
 
-    print()
-    print("=" * 78)
-    print("Output files")
-    print("=" * 78)
-
-    print(
-        DOS_CSV_OUTPUT_PATH
-    )
-    print(
-        FULL_DOS_FIGURE_PATH
-    )
-    print(
-        NEAR_FERMI_FIGURE_PATH
+    print_summary(
+        results
     )
 
-    print()
-    print(
-        "Note: the curves are independently aligned to E_F = 0 eV. "
-        "For semiconductors, the precise Fermi-level position inside "
-        "the gap can depend on the VASP smearing and DOS settings. "
-        "Interpret this first comparison qualitatively."
-    )
 
+# ============================================================
+# Run
+# ============================================================
 
 if __name__ == "__main__":
     main()
