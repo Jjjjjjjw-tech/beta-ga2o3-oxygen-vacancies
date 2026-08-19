@@ -25,3 +25,6 @@ POTCAR
 
 __pycache__/
 *.pyc
+
+# VS Code workspace files
+*.code-workspace
